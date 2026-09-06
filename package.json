@@ -2,7 +2,11 @@
   "name": "pi-notify",
   "version": "1.0.0",
   "description": "pi extension: desktop notification when agent finishes (macOS banner, OSC sequences elsewhere)",
-  "keywords": ["pi-package", "pi-extension", "notification"],
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "notification"
+  ],
   "license": "MIT",
   "author": "David Raistrick",
   "homepage": "https://github.com/keen99/pi-notify",
@@ -18,9 +22,16 @@
     "check": "echo 'nothing to check'"
   },
   "pi": {
-    "extensions": ["./index.ts"]
+    "extensions": [
+      "./index.ts"
+    ]
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
   }
 }
