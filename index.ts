@@ -1,5 +1,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { execFileSync } from "child_process";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 const ESC = "\x1b";
 const BEL = "\x07";
@@ -11,7 +14,7 @@ type Terminal = "ghostty" | "kitty" | "iterm2" | "wezterm" | "warp" | "terminal_
 // Terminals that forward OSC notifications to OS Notification Center natively
 const NATIVE_DESKTOP: Set<Terminal> = new Set(["ghostty", "kitty", "iterm2"]);
 
-function detectTerminal(): Terminal {
+export function detectTerminal(): Terminal {
   const term = (process.env.TERM_PROGRAM || process.env.TERM || "").toLowerCase();
   if (term.includes("ghostty")) return "ghostty";
   if (term.includes("kitty")) return "kitty";
@@ -24,19 +27,19 @@ function detectTerminal(): Terminal {
 
 // --- OSC sequences ---
 
-function osc9(message: string): string {
+export function osc9(message: string): string {
   return `${ESC}]9;${message}${BEL}`;
 }
 
-function osc99(message: string): string {
+export function osc99(message: string): string {
   return `${ESC}]99;i=1:d=0:p=body;${message}${BEL}`;
 }
 
-function osc777(message: string): string {
+export function osc777(message: string): string {
   return `${ESC}]777;notify;pi;${message}${BEL}`;
 }
 
-function sendTerminalNotification(terminal: Terminal, title: string, body: string): void {
+export function sendTerminalNotification(terminal: Terminal, title: string, body: string): void {
   // OSC 9 supports title; others just get the body
   const payload = terminal === "iterm2" || terminal === "ghostty" || terminal === "wezterm"
     ? `${title}: ${body}`
@@ -71,7 +74,7 @@ function sendMacOSBanner(title: string, body: string): void {
  * Uses the bundled window ID from TERM_PROGRAM_PID or falls back to
  * checking if the terminal process itself is frontmost.
  */
-function isActiveWindow(): boolean {
+export function isActiveWindow(): boolean {
   try {
     // Get the frontmost app name
     const frontApp = execFileSync(
@@ -115,7 +118,7 @@ function isToolCall(c: any): c is ToolCall {
   return c && c.type === "toolCall" && typeof c.toolName === "string";
 }
 
-function extractSummary(messages: any[]): { title: string; body: string; errored: boolean } {
+export function extractSummary(messages: any[]): { title: string; body: string; errored: boolean } {
   // Find the last assistant message
   const assistantMsgs = messages.filter((m: any) => m.role === "assistant");
   const lastAssistant = assistantMsgs[assistantMsgs.length - 1];
@@ -176,8 +179,23 @@ function extractSummary(messages: any[]): { title: string; body: string; errored
 export default function (pi: ExtensionAPI) {
   const terminal = detectTerminal();
 
+  if (process.env.NOTIFY_DEBUG === "1") {
+    try {
+      writeFileSync(join(getAgentDir(), "notify-installed.json"), JSON.stringify({ terminal }) + "\n");
+    } catch { /* debug marker best-effort */ }
+  }
+
   pi.on("agent_end", async (event, _ctx) => {
     const { title, body, errored } = extractSummary(event.messages);
+
+    if (process.env.NOTIFY_DEBUG === "1") {
+      try {
+        writeFileSync(
+          join(getAgentDir(), "notify-agent-end.json"),
+          JSON.stringify({ title, body, errored, messageCount: event.messages?.length ?? 0 }) + "\n",
+        );
+      } catch { /* debug marker best-effort */ }
+    }
 
     // Skip notification if the terminal is the active (frontmost) window
     if (isActiveWindow()) return;
