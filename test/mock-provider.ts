@@ -9,7 +9,7 @@ export default function (pi: ExtensionAPI): void {
 	pi.registerProvider("mocktest", {
 		name: "Mock Test",
 		baseUrl: process.env.MOCK_BASE_URL!,
-		apiKey: "MOCK_API_KEY",
+		apiKey: "test-key", // literal: some pi eras (0.77-0.79.x) don't resolve bare env names, and the mock server ignores auth anyway
 		api: "openai-completions",
 		models: [
 			{
